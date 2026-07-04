@@ -27,7 +27,7 @@ var serveCmd = &cobra.Command{
 			fmt.Println("Discovery error: ", err)
 		}
 
-		err = parsing.ParseFolder(folder)
+		err = parsing.ProcessFolder(folder)
 		if err != nil {
 			fmt.Println("Parsing error: ", err)
 		}

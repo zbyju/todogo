@@ -1,6 +1,7 @@
 package filesystem
 
 import (
+	"os"
 	"path/filepath"
 	"strings"
 )
@@ -38,11 +39,22 @@ func (file File) String(leftPad string, shouldPrintPath bool) string {
 	}
 
 	sb.WriteString(file.Name)
-	sb.WriteString("\n")
 
 	return sb.String()
 }
 
 func (file File) IsKnown() bool {
 	return file.Extension.IsKnown()
+}
+
+type OpenedFile struct {
+	File   File
+	Reader *os.File
+}
+
+func NewOpenedFile(file File, reader *os.File) OpenedFile {
+	return OpenedFile{
+		File:   file,
+		Reader: reader,
+	}
 }

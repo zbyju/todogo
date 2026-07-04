@@ -1,7 +1,6 @@
 package parsing
 
 import (
-	"bufio"
 	"errors"
 	"fmt"
 	"os"
@@ -12,16 +11,20 @@ import (
 	"github.com/zbyju/todogo/internal/domain/parsing/regex"
 )
 
-func ParseFolder(folder filesystem.Folder) error {
+type AnnotationParser interface {
+	ParseComment(file filesystem.OpenedFile) []contents.Annotation
+}
+
+func ProcessFolder(folder filesystem.Folder) error {
 	for _, file := range folder.Files {
-		err := ParseFile(file)
+		err := ProcessFile(file)
 		if err != nil {
 			return err
 		}
 	}
 
 	for _, folder := range folder.Folders {
-		err := ParseFolder(folder)
+		err := ProcessFolder(folder)
 		if err != nil {
 			return err
 		}
@@ -30,7 +33,8 @@ func ParseFolder(folder filesystem.Folder) error {
 	return nil
 }
 
-func ParseFile(file filesystem.File) error {
+// TODO: hello
+func ProcessFile(file filesystem.File) error {
 	if !file.IsKnown() {
 		return nil
 	}
@@ -46,20 +50,22 @@ func ParseFile(file filesystem.File) error {
 		}
 	}()
 
-	scanner := bufio.NewScanner(f)
+	of := filesystem.NewOpenedFile(file, f)
 
-	state := regex.NewState(file.Extension, false)
-	annotations := []contents.Annotation{}
-	for scanner.Scan() {
-		line := scanner.Text()
-		newAnnotations, newState := regex.ParseLine(line, state)
-		state = newState
-		annotations = append(annotations, newAnnotations...)
+	parser := regex.NewRegexParser()
+	annotations, err := parser.ParseFile(of)
+
+	if err != nil {
+		return err
 	}
-	fmt.Println(fullpath, annotations)
 
-	if err := scanner.Err(); err != nil {
-		return errors.New("Cannot read file: " + fullpath)
+	if len(annotations) == 0 {
+		return nil
+	}
+
+	fmt.Println(file.String("", false))
+	for _, annotation := range annotations {
+		fmt.Println(" ", annotation.String())
 	}
 
 	return nil

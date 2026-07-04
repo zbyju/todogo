@@ -1,6 +1,8 @@
 package regex
 
 import (
+	"bufio"
+	"errors"
 	"strings"
 
 	"github.com/zbyju/todogo/internal/domain/contents"
@@ -8,15 +10,39 @@ import (
 )
 
 type state struct {
-	Extension                filesystem.Extension
 	IsCurrentlyInsideComment bool
 }
 
-func NewState(extension filesystem.Extension, isCurrentlyInsideComment bool) state {
+func NewState(isCurrentlyInsideComment bool) state {
 	return state{
-		Extension:                extension,
 		IsCurrentlyInsideComment: isCurrentlyInsideComment,
 	}
+}
+
+type regexParser struct {
+}
+
+func NewRegexParser() regexParser {
+	return regexParser{}
+}
+
+func (regexParser regexParser) ParseFile(file filesystem.OpenedFile) ([]contents.Annotation, error) {
+	scanner := bufio.NewScanner(file.Reader)
+
+	state := NewState(false)
+	ts := TypescriptLineParser{}
+	annotations := []contents.Annotation{}
+	for scanner.Scan() {
+		line := scanner.Text()
+		newAnnotations, newState := parseLine(line, state, ts)
+		state = newState
+		annotations = append(annotations, newAnnotations...)
+	}
+
+	if err := scanner.Err(); err != nil {
+		return annotations, errors.New("Cannot read file: " + file.File.Name)
+	}
+	return annotations, nil
 }
 
 type contentLine string
@@ -25,62 +51,29 @@ func newLine(line string) contentLine {
 	return contentLine(strings.TrimSpace(line))
 }
 
-type commentType int
-
-const (
-	none commentType = iota
-	single
-	multi
-)
-
-type comment struct {
-	Text  string
-	Ctype commentType
+type lineParser interface {
+	IsComment(line contentLine) contents.Comment
 }
 
-type LinePraser interface {
-	IsComment(line contentLine) comment
-}
-
-func ParseLine(line string, state state) ([]contents.Annotation, state) {
+func parseLine(line string, state state, lp lineParser) ([]contents.Annotation, state) {
 	annotations := []contents.Annotation{}
-
-	if !state.Extension.IsKnown() {
-		return annotations, state
-	}
 
 	cl := newLine(line)
 	if string(cl) == "" {
 		return annotations, state
 	}
 
-	if state.Extension.String() == "ts" {
-		ts := TypescriptLineParser{}
-		comment := ts.IsComment(cl)
-
-		if comment.Ctype == none {
-			return annotations, state
-		}
-
-		if comment.Ctype == single {
-			if after, ok := strings.CutPrefix(comment.Text, "TODO"); ok {
-				return append(annotations, contents.Annotation{
-					Type: "TODO",
-					Text: strings.TrimLeft(after, ": "),
-				}), state
-			}
-		}
-
-		if comment.Ctype == multi {
-			if after, ok := strings.CutPrefix(comment.Text, "TODO"); ok {
-				return append(annotations, contents.Annotation{
-					Type: "TODO",
-					Text: strings.TrimLeft(after, ": "),
-				}), NewState(state.Extension, true)
-			}
-		}
-
+	comment := lp.IsComment(cl)
+	if comment.CType == contents.CNone {
+		return annotations, state
 	}
 
+	annotation := contents.NewAnnotation(comment)
+
+	if annotation.AType == contents.ANone {
+		return annotations, state
+	}
+
+	annotations = append(annotations, annotation)
 	return annotations, state
 }

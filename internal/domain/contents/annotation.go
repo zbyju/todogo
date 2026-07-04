@@ -1,23 +1,209 @@
 package contents
 
-import "strings"
+import (
+	"strings"
+	"unicode"
+)
+
+type CommentType int
+
+const (
+	CNone CommentType = iota
+	CSingle
+	CMulti
+)
+
+type Comment struct {
+	CType CommentType
+	Text  []string
+}
+
+/* Creates a comment based on a single string representing the whole content of the comment.
+ *
+ * Example (C-like language, single):
+ *   - Original file contains: "// TODO(CODE-1234): this is a comment"
+ *   - Expected input to this function: "TODO(CODE-1234): this is a comment"
+ *   - Output of this function: Comment{CType: Single, Text: ["this is a comment"], Context: "CODE-1234"}
+ *
+ * Example (C-like language, multi):
+ *   - Original file contains: "/* TODO(CODE-1234): this is a comment\n* Another line * /"
+ *   - Expected input to this function: "TODO(CODE-1234): this is a comment\nAnother line"
+ *   - Output of this function: Comment{CType: Multi, Text: ["this is a comment", "Another line"], Context: "CODE-1234"}
+ *
+ * Example (Python-like, single):
+ *   - Original file contains: "# TODO(CODE-1234): this is a comment"
+ *   - Expected input to this function: "TODO(CODE-1234): this is a comment"
+ *   - Output of this function: Comment{CType: Multi, Text: ["this is a comment"], Context: "CODE-1234"}
+ */
+func NewComment(comment string) Comment {
+	lines := splitAndRemoveLastLine(comment)
+
+	if len(lines) == 0 || lines[0] == "" {
+		return Comment{
+			CType: CNone,
+		}
+	}
+
+	commentType := CSingle
+
+	if len(lines) > 1 {
+		commentType = CMulti
+	}
+
+	return Comment{
+		CType: commentType,
+		Text:  lines,
+	}
+}
+
+func (c Comment) String() string {
+	if c.CType == CNone {
+		return "None"
+	}
+
+	var sb strings.Builder
+	if c.CType == CSingle {
+		sb.WriteString("Single: ")
+	} else {
+		sb.WriteString("Multi: ")
+	}
+	sb.WriteString(strings.Join(c.Text, "\n"))
+	return sb.String()
+}
+
+type AnnotationType int
+
+const (
+	ANone AnnotationType = iota
+	ASingle
+	AMulti
+)
 
 type Annotation struct {
-	Type string
-	Text string
+	AType AnnotationType
+	AText string
+	Text  []string
 
 	Context string
 }
 
+func processFirstLine(firstline string) Annotation {
+	processedAtext := false
+	processingContext := false
+
+	var atext strings.Builder
+	hasAText := false
+	hasContext := false
+	var context strings.Builder
+	var rest strings.Builder
+	for _, c := range firstline {
+		// 1. Try to process the annotation type
+		if !processedAtext {
+			if unicode.IsUpper(c) {
+				atext.WriteString(string(c))
+			} else if c == ':' {
+				hasAText = true
+				processedAtext = true
+				processingContext = false
+				hasContext = false
+			} else if c == '(' {
+				processingContext = true
+			} else {
+				if atext.String() == "" {
+					return Annotation{AType: ANone}
+				}
+				return Annotation{AType: ANone, AText: "", Text: []string{atext.String() + context.String() + rest.String()}, Context: ""}
+			}
+			continue
+		}
+
+		// 2. Should we attempt to process the context?
+		if processingContext {
+			if c == ')' {
+				hasContext = true
+			} else if hasContext && c == ':' {
+				hasAText = true
+				processingContext = false
+			} else {
+				context.WriteString(string(c))
+			}
+			continue
+		}
+
+		// 3. Finish the rest
+		rest.WriteString(string(c))
+	}
+
+	if !hasAText {
+		return Annotation{AType: ANone, AText: "", Text: []string{atext.String() + context.String() + rest.String()}, Context: ""}
+	}
+
+	if !hasContext {
+		return Annotation{AType: ASingle, AText: atext.String(), Text: []string{context.String() + rest.String()}, Context: ""}
+	}
+
+	return Annotation{AType: ASingle, AText: atext.String(), Text: []string{rest.String()}, Context: context.String()}
+}
+
+func NewAnnotation(comment Comment) Annotation {
+	if comment.CType == CNone || len(comment.Text) == 0 {
+		return Annotation{AType: ANone}
+	}
+
+	first := processFirstLine(comment.Text[0])
+	if first.AType == ANone {
+		return Annotation{AType: ANone}
+	}
+
+	atype := ASingle
+	if len(comment.Text) > 1 {
+		atype = AMulti
+	}
+
+	text := []string{}
+	if len(first.Text) != 0 {
+		text = append(text, first.Text[0])
+		for _, t := range comment.Text[1:] {
+			text = append(text, strings.TrimSpace(t))
+		}
+	} else {
+		for _, t := range comment.Text {
+			text = append(text, strings.TrimSpace(t))
+		}
+	}
+
+	return Annotation{
+		AType:   atype,
+		AText:   strings.TrimSpace(first.AText),
+		Text:    text,
+		Context: first.Context,
+	}
+}
+
 func (a Annotation) String() string {
 	var sb strings.Builder
-	sb.WriteString(a.Type)
+	sb.WriteString(a.AText)
 	if a.Context != "" {
 		sb.WriteString("(")
 		sb.WriteString(a.Context)
 		sb.WriteString(")")
 	}
-	sb.WriteString(": ")
-	sb.WriteString(a.Text)
+	sb.WriteString(":")
+	sb.WriteString(strings.Join(a.Text, "\n"))
 	return sb.String()
+}
+
+func splitAndRemoveLastLine(comment string) []string {
+	lines := strings.Split(comment, "\n")
+
+	n := len(lines)
+	if n <= 1 {
+		return lines
+	}
+
+	if strings.TrimSpace(lines[n-1]) == "" {
+		return lines[:n-1]
+	}
+
+	return lines
 }

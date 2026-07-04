@@ -2,6 +2,8 @@ package regex
 
 import (
 	"strings"
+
+	"github.com/zbyju/todogo/internal/domain/contents"
 )
 
 type TypescriptLineParser struct{}
@@ -13,15 +15,15 @@ func extractContent(s string) string {
 	return s
 }
 
-func (t TypescriptLineParser) IsComment(line contentLine) comment {
+func (t TypescriptLineParser) IsComment(line contentLine) contents.Comment {
 	s := string(line)
 	if strings.HasPrefix(s, "//") {
-		return comment{Text: extractContent(s), Ctype: single}
+		return contents.NewComment(extractContent(s))
 	}
 
 	if strings.HasPrefix(s, "/*") {
-		return comment{Text: extractContent(s), Ctype: multi}
+		return contents.NewComment(extractContent(s))
 	}
 
-	return comment{Text: "", Ctype: none}
+	return contents.NewComment("")
 }
