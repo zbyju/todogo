@@ -30,7 +30,7 @@ func NewExtension(extension string) Extension {
 }
 
 func (e Extension) String() string {
-	return string(e[:])
+	return strings.TrimSpace(string(e[:]))
 }
 
 var knownExtensions = []Extension{
