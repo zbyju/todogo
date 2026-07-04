@@ -2,6 +2,7 @@ package fdiscovery
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -29,7 +30,7 @@ func discoverFolder(path string) (*filesystem.Folder, error) {
 			subfolder, err := discoverFolder(fullpath)
 
 			if err != nil {
-				return nil, err
+				fmt.Println("Cannot discover folder: ", err)
 			}
 
 			folders = append(folders, *subfolder)

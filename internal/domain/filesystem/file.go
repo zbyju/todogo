@@ -4,6 +4,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/zbyju/todogo/internal/style"
 )
 
 type File struct {
@@ -24,7 +26,7 @@ func NewFile(fullpath string, extension string, isIgnored bool) File {
 	}
 }
 
-func (file File) String(leftPad string, shouldPrintPath bool) string {
+func (file File) ColorString(leftPad string, shouldPrintPath bool) string {
 	var sb strings.Builder
 
 	sb.WriteString(leftPad)
@@ -33,9 +35,9 @@ func (file File) String(leftPad string, shouldPrintPath bool) string {
 	}
 
 	if file.IsKnown() {
-		sb.WriteString(" ")
+		sb.WriteString(style.Apply(" ", style.Blue, style.Bold))
 	} else {
-		sb.WriteString(" ")
+		sb.WriteString(style.Apply(" ", style.Gray))
 	}
 
 	sb.WriteString(file.Name)

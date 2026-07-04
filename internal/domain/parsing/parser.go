@@ -19,7 +19,7 @@ func ProcessFolder(folder filesystem.Folder) error {
 	for _, file := range folder.Files {
 		err := ProcessFile(file)
 		if err != nil {
-			return err
+			fmt.Println("Cannot process file: ", err)
 		}
 	}
 
@@ -63,9 +63,9 @@ func ProcessFile(file filesystem.File) error {
 		return nil
 	}
 
-	fmt.Println(file.String("", false))
+	fmt.Println(file.ColorString("", false))
 	for _, annotation := range annotations {
-		fmt.Println(" ", annotation.String())
+		fmt.Println(" ", annotation.ColorString())
 	}
 
 	return nil

@@ -3,6 +3,8 @@ package contents
 import (
 	"strings"
 	"unicode"
+
+	"github.com/zbyju/todogo/internal/style"
 )
 
 type AnnotationType int
@@ -117,6 +119,33 @@ func NewAnnotation(comment Comment) Annotation {
 func (a Annotation) String() string {
 	var sb strings.Builder
 	sb.WriteString(a.AText)
+	if a.Context != "" {
+		sb.WriteString("(")
+		sb.WriteString(a.Context)
+		sb.WriteString(")")
+	}
+	sb.WriteString(":")
+	sb.WriteString(strings.Join(a.Text, "\n"))
+	return sb.String()
+}
+
+// annotationColor picks a color by annotation type; unknown types are gray.
+func annotationColor(atext string) string {
+	switch strings.ToUpper(atext) {
+	case "TODO":
+		return style.Yellow
+	case "FIXME", "BUG", "XXX":
+		return style.Red
+	case "NOTE", "INFO":
+		return style.Blue
+	default:
+		return style.Gray
+	}
+}
+
+func (a Annotation) ColorString() string {
+	var sb strings.Builder
+	sb.WriteString(style.Apply(a.AText, annotationColor(a.AText), style.Bold))
 	if a.Context != "" {
 		sb.WriteString("(")
 		sb.WriteString(a.Context)

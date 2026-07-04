@@ -4,6 +4,8 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"github.com/zbyju/todogo/internal/style"
 )
 
 type Folder struct {
@@ -41,7 +43,7 @@ func (folder Folder) IsEmpty() bool {
 	return len(folder.Folders) == 0 && len(folder.Files) == 0
 }
 
-func (folder Folder) String(leftPad string, leftPadStr string, shouldPrintPath bool) string {
+func (folder Folder) ColorString(leftPad string, leftPadStr string, shouldPrintPath bool) string {
 	var sb strings.Builder
 
 	sb.WriteString(leftPad)
@@ -50,9 +52,9 @@ func (folder Folder) String(leftPad string, leftPadStr string, shouldPrintPath b
 	}
 
 	if !folder.IsEmpty() {
-		sb.WriteString(" ")
+		sb.WriteString(style.Apply(" ", style.Blue, style.Bold))
 	} else {
-		sb.WriteString(" ")
+		sb.WriteString(style.Apply(" ", style.Gray))
 	}
 
 	sb.WriteString(folder.Name)
@@ -61,11 +63,11 @@ func (folder Folder) String(leftPad string, leftPadStr string, shouldPrintPath b
 
 	newLeftPad := leftPad + leftPadStr
 	for _, subfolder := range folder.Folders {
-		sb.WriteString(subfolder.String(newLeftPad, leftPadStr, shouldPrintPath))
+		sb.WriteString(subfolder.ColorString(newLeftPad, leftPadStr, shouldPrintPath))
 	}
 
 	for _, file := range folder.Files {
-		sb.WriteString(file.String(newLeftPad, false))
+		sb.WriteString(file.ColorString(newLeftPad, false))
 	}
 
 	return sb.String()
