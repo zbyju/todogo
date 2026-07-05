@@ -9,16 +9,15 @@ import (
 )
 
 type Folder struct {
-	Path      string
-	Name      string
-	Folders   []Folder
-	Files     []File
-	IsIgnored bool
+	Path    string
+	Name    string
+	Folders []Folder
+	Files   []File
 }
 
 const FolderDelimiter = "/"
 
-func NewFolder(fullpath string, folders []Folder, files []File, isIgnored bool) Folder {
+func NewFolder(fullpath string, folders []Folder, files []File) Folder {
 	path, name := filepath.Split(fullpath)
 
 	sort.Slice(folders, func(i, j int) bool {
@@ -31,16 +30,19 @@ func NewFolder(fullpath string, folders []Folder, files []File, isIgnored bool) 
 	})
 
 	return Folder{
-		Path:      path,
-		Name:      name,
-		Folders:   folders,
-		Files:     files,
-		IsIgnored: isIgnored,
+		Path:    path,
+		Name:    name,
+		Folders: folders,
+		Files:   files,
 	}
 }
 
 func (folder Folder) IsEmpty() bool {
 	return len(folder.Folders) == 0 && len(folder.Files) == 0
+}
+
+func (folder Folder) Fullpath() string {
+	return filepath.Join(folder.Path, folder.Name)
 }
 
 func (folder Folder) ColorString(leftPad string, leftPadStr string, shouldPrintPath bool) string {

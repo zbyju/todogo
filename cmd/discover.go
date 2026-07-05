@@ -7,6 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/zbyju/todogo/internal/application/fdiscovery"
+	"github.com/zbyju/todogo/internal/domain/ignoring"
 	"github.com/zbyju/todogo/internal/domain/parsing"
 )
 
@@ -27,7 +28,9 @@ var serveCmd = &cobra.Command{
 			fmt.Println("Discovery error: ", err)
 		}
 
-		err = parsing.ProcessFolder(folder)
+		rules := []ignoring.Rule{}
+
+		err = parsing.ProcessFolder(folder, &rules)
 		if err != nil {
 			fmt.Println("Parsing error: ", err)
 		}

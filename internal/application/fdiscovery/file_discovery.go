@@ -36,11 +36,11 @@ func discoverFolder(path string) (*filesystem.Folder, error) {
 			folders = append(folders, *subfolder)
 		} else {
 			ext := filepath.Ext(fullpath)
-			files = append(files, filesystem.NewFile(fullpath, ext, false))
+			files = append(files, filesystem.NewFile(fullpath, ext))
 		}
 	}
 
-	result := filesystem.NewFolder(path, folders, files, false)
+	result := filesystem.NewFolder(path, folders, files)
 	return &result, nil
 }
 

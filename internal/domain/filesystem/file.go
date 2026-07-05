@@ -3,6 +3,7 @@ package filesystem
 import (
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/zbyju/todogo/internal/style"
@@ -12,18 +13,20 @@ type File struct {
 	Path      string
 	Name      string
 	Extension Extension
-	IsIgnored bool
 }
 
-func NewFile(fullpath string, extension string, isIgnored bool) File {
+func NewFile(fullpath string, extension string) File {
 	path, name := filepath.Split(fullpath)
 	ext := NewExtension(extension)
 	return File{
 		Path:      path,
 		Name:      name,
 		Extension: ext,
-		IsIgnored: isIgnored,
 	}
+}
+
+func (file File) Fullpath() string {
+	return filepath.Join(file.Path, file.Name)
 }
 
 func (file File) ColorString(leftPad string, shouldPrintPath bool) string {
@@ -43,6 +46,18 @@ func (file File) ColorString(leftPad string, shouldPrintPath bool) string {
 	sb.WriteString(file.Name)
 
 	return sb.String()
+}
+
+var IgnoreFilenames = []string{
+	".gitignore",
+}
+
+func (file File) IsRelevant() bool {
+	return file.IsKnown() || file.IsIgnoreFile()
+}
+
+func (file File) IsIgnoreFile() bool {
+	return slices.Contains(IgnoreFilenames, file.Name)
 }
 
 func (file File) IsKnown() bool {

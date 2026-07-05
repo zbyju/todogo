@@ -8,6 +8,7 @@ import (
 
 	"github.com/zbyju/todogo/internal/domain/contents"
 	"github.com/zbyju/todogo/internal/domain/filesystem"
+	"github.com/zbyju/todogo/internal/domain/ignoring"
 	"github.com/zbyju/todogo/internal/domain/parsing/regex"
 )
 
@@ -15,16 +16,20 @@ type AnnotationParser interface {
 	ParseComment(file filesystem.OpenedFile) []contents.Annotation
 }
 
-func ProcessFolder(folder filesystem.Folder) error {
+func ProcessFolder(folder filesystem.Folder, rules *[]ignoring.Rule) error {
+	if ignoring.IsRuledOut(*rules, folder.Fullpath()) {
+		return nil
+	}
+
 	for _, file := range folder.Files {
-		err := ProcessFile(file)
+		err := ProcessFile(file, rules)
 		if err != nil {
 			fmt.Println("Cannot process file: ", err)
 		}
 	}
 
 	for _, folder := range folder.Folders {
-		err := ProcessFolder(folder)
+		err := ProcessFolder(folder, rules)
 		if err != nil {
 			return err
 		}
@@ -33,9 +38,12 @@ func ProcessFolder(folder filesystem.Folder) error {
 	return nil
 }
 
-// TODO: hello
-func ProcessFile(file filesystem.File) error {
-	if !file.IsKnown() {
+func ProcessFile(file filesystem.File, rules *[]ignoring.Rule) error {
+	if !file.IsRelevant() {
+		return nil
+	}
+
+	if ignoring.IsRuledOut(*rules, file.Fullpath()) {
 		return nil
 	}
 
@@ -52,20 +60,34 @@ func ProcessFile(file filesystem.File) error {
 
 	of := filesystem.NewOpenedFile(file, f)
 
-	parser := regex.NewRegexParser()
-	annotations, err := parser.ParseFile(of)
+	if file.IsKnown() {
+		parser := regex.NewRegexParser()
+		annotations, err := parser.ParseFile(of)
 
-	if err != nil {
-		return err
-	}
+		if err != nil {
+			return err
+		}
 
-	if len(annotations) == 0 {
+		if len(annotations) == 0 {
+			return nil
+		}
+
+		fmt.Println(file.ColorString("", false))
+		for _, annotation := range annotations {
+			fmt.Println("   ", annotation.ColorString())
+		}
+
 		return nil
 	}
 
-	fmt.Println(file.ColorString("", false))
-	for _, annotation := range annotations {
-		fmt.Println(" ", annotation.ColorString())
+	if file.IsIgnoreFile() {
+		parser := ignoring.NewIgnoreParser()
+		newRules, err := parser.ParseIgnore(&of)
+
+		if err != nil {
+			return err
+		}
+		*rules = append(*rules, newRules...)
 	}
 
 	return nil
